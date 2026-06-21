@@ -37,6 +37,9 @@
     <!-- Buttons will be generated here -->
   </div>
 
+  <div class="pauseArea" id="pauseArea">
+   <button style="width: 300px; height:50px; padding:5px; margin: 20px" id='pause-btn'>Pause</button>
+  </div>
 <script>
 (() => {
   // Parse time per round from query string (?t=30)
@@ -46,6 +49,7 @@
     return v !== null ? (isNaN(Number(v)) ? fallback : Math.max(1, Math.floor(Number(v)))) : fallback;
   }
   const ROUND_SECONDS = getQueryParam('t', 30);
+  const TOTAL_ROUNDS = getQueryParam('r',8);
 
   // Note pools (natural notes only) in allowed ranges
   const TREBLE_NOTES = ["C4","D4","E4","F4","G4","A4","B4","C5","D5","E5","F5"];
@@ -59,8 +63,15 @@
   let timeLeft = ROUND_SECONDS;
   let currentClef = "treble"; // alternates between 'treble' and 'bass'
   let currentNote = null; // e.g. "C4"
+  let roundTimeoutFn = null;
   let timerInterval = null;
+  let timerIntervalFn = null;
   let roundActive = false;
+  let roundTimeout = null;
+  let roundEnded = null;
+  let readyLeftTime = 0;
+  let paused = false;
+  let roundNum = 0;
 
   // SVG and layout parameters for drawing
   const svg = document.getElementById('stave');
@@ -104,7 +115,13 @@
   };
 
   // Utility: pick random from array
-  function randPick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+	function getRandomInt(min, max) {
+    const minCeiled = Math.ceil(min);
+    const maxFloored = Math.floor(max);
+    return Math.floor(Math.random() * (maxFloored - minCeiled) + minCeiled); // The maximum is exclusive and the minimum is inclusive
+  }
+
+  function randPick(arr){ return arr[getRandomInt(0,arr.length)]; }
 
   // Generate answer buttons
   const answersDiv = document.getElementById('answers');
@@ -118,6 +135,10 @@
     answersDiv.appendChild(btn);
   });
 
+  // Add pause button listener
+
+  document.getElementById('pause-btn').addEventListener('click', () => onTogglePause());
+
   const scoreDisplay = document.getElementById('scoreDisplay');
   const timeDisplay = document.getElementById('timeDisplay');
 
@@ -125,7 +146,39 @@
     scoreDisplay.textContent = `Score: ${score} pts`;
   }
   function setTimeDisplay() {
-    timeDisplay.textContent = `Time left: ${timeLeft} s`;
+    timeDisplay.textContent = `Round: ${roundNum+1}/${TOTAL_ROUNDS} Time left: ${timeLeft} s`;
+  }
+  function onTogglePause() {
+    if (!roundActive) {
+      if (paused) {
+        paused = false;
+        document.getElementById('pause-btn').textContent = 'Pause';
+        roundEnded = Date.now();
+        roundTimeout = setTimeout(roundTimeoutFn,readyLeftTime);
+      }
+      else {
+        readyLeftTime = Math.max(0,5000 - (Date.now() - roundEnded));
+        paused = true;
+        document.getElementById('pause-btn').textContent = 'Resume';
+        clearTimeout(roundTimeout);
+      }
+      return;
+    }
+
+    if (paused) {
+      paused = false;
+      document.getElementById('pause-btn').textContent = 'Pause';
+      document.getElementById('stave').style.display = 'block';
+      timerInterval = setInterval(timerIntervalFn, 1000);
+    }
+    else {
+      timeLeft -= 1;
+      paused = true;
+      document.getElementById('pause-btn').textContent = 'Resume';
+      document.getElementById('stave').style.display = 'none';
+      clearInterval(timerInterval);
+      setTimeDisplay();
+    }
   }
 
   // Draw empty stave with clef and current note (if any)
@@ -234,17 +287,22 @@
 
   // Pick a new note based on the current clef and render it
   function newNote() {
+    var previousNote = currentNote;
     if (currentClef === 'treble') {
-      currentNote = randPick(TREBLE_NOTES);
+      do {
+        currentNote = randPick(TREBLE_NOTES);
+      } while (currentNote == previousNote);
     } else {
-      currentNote = randPick(BASS_NOTES);
+      do {
+        currentNote = randPick(BASS_NOTES);
+      } while (currentNote == previousNote);
     }
     renderStave();
   }
 
   // Handle answer click
   function onAnswer(button, label) {
-    if (!roundActive) return;
+    if (paused || !roundActive) return;
     // temporarily disable clicks (ignore repeated fast clicks)
     disableAnswerClicks(true);
 
@@ -278,6 +336,34 @@
     btns.forEach(b => b.disabled = disable);
   }
 
+  roundTimeoutFn = function() {
+    currentClef = (currentClef === 'treble') ? 'bass' : 'treble';
+    startRound();
+  };
+
+  timerIntervalFn = function() {
+      timeLeft -= 1;
+      if (timeLeft < 0) timeLeft = 0;
+      setTimeDisplay();
+      if (timeLeft <= 0) {
+        // round over: alternate clef and immediately start next round
+        clearInterval(timerInterval);
+        roundActive = false;
+        ++roundNum;
+        if (roundNum == TOTAL_ROUNDS) {
+          document.getElementById('next-round-announce').textContent=`Your score was ${score}!`
+        }
+        else {
+          // small pause (5s) before starting next round for visual clarity
+          roundEnded = Date.now();
+          roundTimeout = setTimeout(roundTimeoutFn, 5000);
+        }
+
+        document.getElementById('next-round-announce').style.display='block';
+        document.getElementById('stave').style.display='none';
+      }
+    };
+
   // Timer control
   function startRound() {
     document.getElementById('next-round-announce').style.display='none';
@@ -290,24 +376,8 @@
     newNote();
 
     if (timerInterval) clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-      timeLeft -= 1;
-      if (timeLeft < 0) timeLeft = 0;
-      setTimeDisplay();
-      if (timeLeft <= 0) {
-        // round over: alternate clef and immediately start next round
-        clearInterval(timerInterval);
-        roundActive = false;
 
-        document.getElementById('next-round-announce').style.display='block';
-        document.getElementById('stave').style.display='none';
-        // small pause (5s) before starting next round for visual clarity
-        setTimeout(() => {
-          currentClef = (currentClef === 'treble') ? 'bass' : 'treble';
-          startRound();
-        }, 5000);
-      }
-    }, 1000);
+    timerInterval = setInterval(timerIntervalFn, 1000);
   }
 
   // Initialize UI values
