@@ -30,6 +30,7 @@
 
   <div class="stave-box">
     <svg id="stave" class="stave-canvas" viewBox="0 0 480 160" xmlns="http://www.w3.org/2000/svg" aria-label="Stave with single note" role="img"></svg>
+    <p id="next-round-announce" style="display:none; font-weight: bold; font-size: 30px">Get Ready for next round<p>
   </div>
 
   <div class="answers" id="answers">
@@ -110,6 +111,7 @@
   BUTTON_LABELS.forEach(lbl => {
     const btn = document.createElement('button');
     btn.className = 'note-btn';
+    btn.id = 'note-btn-'+lbl;
     btn.textContent = lbl;
     btn.setAttribute('aria-label', `Answer ${lbl}`);
     btn.addEventListener('click', () => onAnswer(btn, lbl));
@@ -250,6 +252,9 @@
     const noteLetter = currentNote[0]; // e.g. 'C' from 'C4'
     const isCorrect = (label === noteLetter);
 
+    var correctButton = document.getElementById('note-btn-'+noteLetter);
+    correctButton.classList.add('correct');
+
     if (isCorrect) {
       button.classList.add('correct');
       score += 2;
@@ -262,9 +267,10 @@
     // After a short delay, remove color, show new note, re-enable buttons
     setTimeout(() => {
       button.classList.remove('correct','incorrect');
+      correctButton.classList.remove('correct');
       newNote();
       disableAnswerClicks(false);
-    }, 450);
+    }, 250 + (isCorrect ? 0 : 750));
   }
 
   function disableAnswerClicks(disable) {
@@ -274,6 +280,8 @@
 
   // Timer control
   function startRound() {
+    document.getElementById('next-round-announce').style.display='none';
+    document.getElementById('stave').style.display='block';
     roundActive = true;
     timeLeft = ROUND_SECONDS;
     setTimeDisplay();
@@ -290,6 +298,9 @@
         // round over: alternate clef and immediately start next round
         clearInterval(timerInterval);
         roundActive = false;
+
+        document.getElementById('next-round-announce').style.display='block';
+        document.getElementById('stave').style.display='none';
         // small pause (5s) before starting next round for visual clarity
         setTimeout(() => {
           currentClef = (currentClef === 'treble') ? 'bass' : 'treble';
