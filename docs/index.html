@@ -50,8 +50,8 @@
   const TREBLE_NOTES = ["C4","D4","E4","F4","G4","A4","B4","C5","D5","E5","F5"];
   const BASS_NOTES   = ["A2","B2","C3","D3","E3","F3","G3","A3","B3","C4"];
 
-  // Eight buttons labelled A-G (we repeat 'A' at end to make eight)
-  const BUTTON_LABELS = ["A","B","C","D","E","F","G","A"];
+  // Seven buttons labelled A-G
+  const BUTTON_LABELS = ["A","B","C","D","E","F","G"];
 
   // Score and state
   let score = 0;
@@ -68,37 +68,38 @@
 
   // Staff lines vertical positions
   const staffTop = 40;
-  const lineSpacing = 12; // px between staff lines
+  const halfSpacing = 6;
+  const lineSpacing = halfSpacing*2; // px between staff lines
   const staffLines = Array.from({length:5}, (_,i) => staffTop + i*lineSpacing); // 5 lines
 
   // Manual vertical mapping for allowed notes for a pleasing visual mapping.
   // Values are y coordinates for the center of the note head (in SVG coords).
   // These are tuned to place notes on/around the staff with ledger lines where necessary.
   const TREBLE_Y = {
-    "C4": staffLines[4] + 2*lineSpacing, // two ledger lines below
-    "D4": staffLines[4] + lineSpacing,
-    "E4": staffLines[4],
-    "F4": staffLines[4] - lineSpacing,
-    "G4": staffLines[4] - 2*lineSpacing,
-    "A4": staffLines[4] - 3*lineSpacing,
-    "B4": staffLines[4] - 4*lineSpacing,
-    "C5": staffLines[4] - 5*lineSpacing,
-    "D5": staffLines[4] - 6*lineSpacing,
-    "E5": staffLines[4] - 7*lineSpacing,
-    "F5": staffLines[4] - 8*lineSpacing
+    "F5": staffLines[4] - 8*halfSpacing,
+    "E5": staffLines[4] - 7*halfSpacing,
+    "D5": staffLines[4] - 6*halfSpacing,
+    "C5": staffLines[4] - 5*halfSpacing,
+    "B4": staffLines[4] - 4*halfSpacing,
+    "A4": staffLines[4] - 3*halfSpacing,
+    "G4": staffLines[4] - 2*halfSpacing,
+    "F4": staffLines[4] - 1*halfSpacing,
+    "E4": staffLines[4] + 0*halfSpacing,
+    "D4": staffLines[4] + 1*halfSpacing,
+    "C4": staffLines[4] + 2*halfSpacing
   };
 
   const BASS_Y = {
-    "A2": staffLines[0] + 5*lineSpacing, // low
-    "B2": staffLines[0] + 4*lineSpacing,
-    "C3": staffLines[0] + 3*lineSpacing,
-    "D3": staffLines[0] + 2*lineSpacing,
-    "E3": staffLines[0] + lineSpacing,
-    "F3": staffLines[0],
-    "G3": staffLines[0] - lineSpacing,
-    "A3": staffLines[0] - 2*lineSpacing,
-    "B3": staffLines[0] - 3*lineSpacing,
-    "C4": staffLines[0] - 4*lineSpacing
+    "C4": staffLines[0] - 2*halfSpacing,
+    "B3": staffLines[0] - 1*halfSpacing,
+    "A3": staffLines[0] - 0*halfSpacing,
+    "G3": staffLines[0] + 1*halfSpacing,
+    "F3": staffLines[0] + 2*halfSpacing,
+    "E3": staffLines[0] + 3*halfSpacing,
+    "D3": staffLines[0] + 4*halfSpacing,
+    "C3": staffLines[0] + 5*halfSpacing,
+    "B2": staffLines[0] + 6*halfSpacing,
+    "A2": staffLines[0] + 7*halfSpacing
   };
 
   // Utility: pick random from array
@@ -289,11 +290,11 @@
         // round over: alternate clef and immediately start next round
         clearInterval(timerInterval);
         roundActive = false;
-        // small pause (400ms) before starting next round for visual clarity
+        // small pause (5s) before starting next round for visual clarity
         setTimeout(() => {
           currentClef = (currentClef === 'treble') ? 'bass' : 'treble';
           startRound();
-        }, 400);
+        }, 5000);
       }
     }, 1000);
   }
